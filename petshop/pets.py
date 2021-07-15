@@ -18,19 +18,44 @@ def format_date(d):
 
 @bp.route("/search/<field>/<value>")
 def search(field, value):
-    # TBD
-    return ""
+    conn = db.get_db()
+    cursor = conn.cursor()
+    cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p ,animal s, tags_pets tp,tag t where p.species=s.id and tp.pet=p.id and tp.tag=t.id and t.name=? order by p.id",[value])
+    pets = cursor.fetchall()
+    return render_template('index.html', pets = pets,order="asc")
 
 @bp.route("/")
 def dashboard():
+	
     conn = db.get_db()
     cursor = conn.cursor()
-    oby = request.args.get("order_by", "id") # TODO. This is currently not used. 
-    order = request.args.get("order", "asc")
+    oby = request.args.get("order_by") # TODO. This is currently not used. 
+    order = request.args.get("order","asc")
+    
     if order == "asc":
-        cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p, animal s where p.species = s.id order by p.id")
+    	if oby == 'name':
+    		cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p, animal s where p.species = s.id order by p.name")
+    	elif oby == 'bought':
+    		cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p, animal s where p.species = s.id order by p.bought")
+    	elif oby == 'sold':
+    		cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p, animal s where p.species = s.id order by p.sold")
+    	elif oby == 'species':
+    		cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p, animal s where p.species = s.id order by s.name")
+    	else :
+    		cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p, animal s where p.species = s.id order by p.id")
+    
     else:
-        cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p, animal s where p.species = s.id order by p.id desc")
+    	
+    	if oby == 'name':
+    		cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p, animal s where p.species = s.id order by p.name desc")
+    	elif oby == 'bought':
+    		cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p, animal s where p.species = s.id order by p.bought desc")
+    	elif oby == 'sold':
+    		cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p, animal s where p.species = s.id order by p.sold desc")
+    	elif oby == 'species':
+    		cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p, animal s where p.species = s.id order by s.name desc")
+    	else:
+    		cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p, animal s where p.species = s.id order by p.id desc")
     pets = cursor.fetchall()
     return render_template('index.html', pets = pets, order="desc" if order=="asc" else "asc")
 
@@ -74,7 +99,22 @@ def edit(pid):
     elif request.method == "POST":
         description = request.form.get('description')
         sold = request.form.get("sold")
-        # TODO Handle sold
+        cursor.execute("select sold from pet where id = ?", [pid])
+        sell=cursor.fetchone()[0]
+      
+        
+        cursor.execute("update pet set description=? where id=?",(description,pid))
+        if(sold =="1" and sell!=''):
+        	pass
+        elif(sold !="1" and sell!=''):
+        	date1=""
+        	cursor.execute("update pet set sold=? where id=?",(date1,pid))
+        elif(sold=="1"):
+        	date1=datetime.datetime.now().strftime("%Y-%m-%d")
+        	cursor.execute("update pet set sold=? where id=?",(date1,pid))
+        
+        conn.commit()
+        
         return redirect(url_for("pets.pet_info", pid=pid), 302)
         
     
